@@ -113,7 +113,7 @@ docker-compose down -v
 ### Frontend Container (Development)
 - **Base Image**: Node.js 18-alpine
 - **Dependencies**: Vue 3, Tailwind CSS, Vite
-- **Security**: Non-root user (nextjs:1001)
+- **Security**: Non-root user (vuejs:1001)
 - **Health Check**: Port 3000 availability
 - **Port**: 3000
 

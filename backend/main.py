@@ -21,6 +21,9 @@ from urllib.parse import urlparse
 import mimetypes
 import zipfile
 import tempfile
+import asyncio
+import aiohttp
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import custom logging
 import sys
@@ -65,11 +68,15 @@ except ImportError as e:
         logger.error(f"[ERROR] {str(error)} | Context: {context}")
 
 # Configuration constants (defined before lifespan to avoid reference errors)
-MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds
-RATE_LIMIT_DELAY = (1, 3)  # random delay between 1-3 seconds
+MAX_RETRIES = 2  # Reduced retries
+RETRY_DELAY = 1  # seconds - reduced delay
+RATE_LIMIT_DELAY = (0.1, 0.5)  # random delay between 0.1-0.5 seconds - much faster
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
 VALID_IMAGE_TYPES = ['jpeg', 'jpg', 'png', 'gif', 'webp', 'svg']
+# Performance optimization settings
+MAX_CONCURRENT_DOWNLOADS = 10  # Limit concurrent image downloads
+CHUNK_SIZE = 32768  # Increased chunk size for faster downloads
+TIMEOUT = 10  # Reduced timeout for faster failure detection
 
 # Cleanup configuration
 AUTO_CLEANUP_ENABLED = True  # Enable auto-cleanup for old sessions
@@ -183,10 +190,6 @@ app.mount("/output", StaticFiles(directory="output"), name="output")
 
 class ScrapingRequest(BaseModel):
     url: str
-    login_enabled: bool = False
-    login_url: Optional[str] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
 
 class ScrapingResponse(BaseModel):
     success: bool
@@ -270,41 +273,7 @@ async def scrape_website(request: ScrapingRequest):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
         
-        # Perform login if credentials provided
-        if request.login_enabled and request.username and request.password:
-            if not request.login_url:
-                log_error_with_context("Login URL is required when login is enabled", f"Session: {session_id}")
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Login URL is required when login is enabled"
-                )
-            
-            login_payload = {
-                'username': request.username, 
-                'password': request.password
-            }
-            
-            log_scraping_activity(f"Attempting login | URL: {request.login_url} | Username: {request.username}")
-            
-            login_start_time = time.time()
-            login_response = session.post(
-                request.login_url, 
-                data=login_payload, 
-                verify=False,
-                timeout=30
-            )
-            login_duration = time.time() - login_start_time
-            
-            log_request_details(request.login_url, "POST", login_response.status_code, login_duration)
-            
-            if login_response.status_code not in [200, 201, 302]:
-                log_error_with_context(f"Login failed. Status code: {login_response.status_code}", f"Session: {session_id}")
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Login failed. Status code: {login_response.status_code}"
-                )
-            
-            log_scraping_activity(f"Login successful | Duration: {login_duration:.2f}s")
+
         
         # Scrape the website with retry logic
         scrape_start_time = time.time()
@@ -454,11 +423,15 @@ async def scrape_website(request: ScrapingRequest):
             if len(links_data) > 5:
                 log_scraping_activity(f"  ... and {len(links_data) - 5} more links")
         
-        # Extract and save images with better logic
+        # Extract and save images with optimized concurrent downloads
         images = soup.find_all('img')
         saved_images = []
         
         log_scraping_activity(f"Found {len(images)} images to process")
+        
+        # Prepare image URLs for concurrent download
+        image_tasks = []
+        base64_images = []
         
         for img_index, img in enumerate(images):
             img_url = img.get('src')
@@ -474,7 +447,7 @@ async def scrape_website(request: ScrapingRequest):
                     continue
                 
                 if img_url.startswith('data:image'):
-                    # Handle base64 encoded images
+                    # Handle base64 encoded images (process immediately)
                     try:
                         img_type, img_data = img_url.split(';base64,')
                         img_type = img_type.split(':')[-1]
@@ -512,55 +485,74 @@ async def scrape_website(request: ScrapingRequest):
                         continue
                         
                 else:
-                    # Handle regular image URLs with retry logic
-                    def download_image():
-                        rate_limit_delay()  # Add rate limiting
-                        img_response = session.get(img_url, stream=True, timeout=15)
-                        
-                        if img_response.status_code == 200:
-                            # Get content type and validate
-                            content_type = img_response.headers.get('Content-Type', 'image/jpeg')
-                            ext = get_file_extension_from_mime_type(content_type)
-                            
-                            # Check content length if available
-                            content_length = img_response.headers.get('Content-Length')
-                            if content_length and int(content_length) > MAX_IMAGE_SIZE:
-                                logger.warning(f"Image {img_url} too large: {content_length} bytes")
-                                return None
-                            
-                            img_name = f'image_{img_index}.{ext}'
-                            output_path = os.path.join(session_output_dir, img_name)
-                            
-                            # Download with size validation
-                            total_size = 0
-                            with open(output_path, 'wb') as img_file:
-                                for chunk in img_response.iter_content(chunk_size=8192):
-                                    if chunk:
-                                        total_size += len(chunk)
-                                        if total_size > MAX_IMAGE_SIZE:
-                                            logger.warning(f"Image {img_url} exceeded size limit during download")
-                                            img_file.close()
-                                            os.remove(output_path)
-                                            return None
-                                        img_file.write(chunk)
-                            
-                            return img_name
-                        else:
-                            logger.warning(f"Failed to download image {img_url}: Status {img_response.status_code}")
-                            return None
+                    # Add to concurrent download queue
+                    image_tasks.append((img_index, img_url))
                     
-                    try:
-                        img_name = retry_request(download_image)
-                        if img_name:
-                            saved_images.append(img_name)
-                            logger.info(f"Downloaded image: {img_name}")
-                    except Exception as e:
-                        logger.error(f"Error downloading image {img_url}: {str(e)}")
-                        continue
-                        
             except Exception as e:
                 logger.error(f"Error processing image {img_index}: {str(e)}")
                 continue
+        
+        # Download images concurrently
+        if image_tasks:
+            log_scraping_activity(f"Starting concurrent download of {len(image_tasks)} images")
+            
+            def download_single_image(task):
+                img_index, img_url = task
+                try:
+                    # Minimal rate limiting
+                    time.sleep(random.uniform(0.05, 0.2))  # 50-200ms delay
+                    
+                    img_response = session.get(img_url, stream=True, timeout=TIMEOUT)
+                    
+                    if img_response.status_code == 200:
+                        # Get content type and validate
+                        content_type = img_response.headers.get('Content-Type', 'image/jpeg')
+                        ext = get_file_extension_from_mime_type(content_type)
+                        
+                        # Check content length if available
+                        content_length = img_response.headers.get('Content-Length')
+                        if content_length and int(content_length) > MAX_IMAGE_SIZE:
+                            logger.warning(f"Image {img_url} too large: {content_length} bytes")
+                            return None
+                        
+                        img_name = f'image_{img_index}.{ext}'
+                        output_path = os.path.join(session_output_dir, img_name)
+                        
+                        # Download with size validation and larger chunks
+                        total_size = 0
+                        with open(output_path, 'wb') as img_file:
+                            for chunk in img_response.iter_content(chunk_size=CHUNK_SIZE):
+                                if chunk:
+                                    total_size += len(chunk)
+                                    if total_size > MAX_IMAGE_SIZE:
+                                        logger.warning(f"Image {img_url} exceeded size limit during download")
+                                        img_file.close()
+                                        os.remove(output_path)
+                                        return None
+                                    img_file.write(chunk)
+                        
+                        return img_name
+                    else:
+                        logger.warning(f"Failed to download image {img_url}: Status {img_response.status_code}")
+                        return None
+                        
+                except Exception as e:
+                    logger.error(f"Error downloading image {img_url}: {str(e)}")
+                    return None
+            
+            # Use ThreadPoolExecutor for concurrent downloads
+            with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_DOWNLOADS) as executor:
+                # Submit all download tasks
+                future_to_task = {executor.submit(download_single_image, task): task for task in image_tasks}
+                
+                # Collect results as they complete
+                for future in as_completed(future_to_task):
+                    img_name = future.result()
+                    if img_name:
+                        saved_images.append(img_name)
+                        logger.info(f"Downloaded image: {img_name}")
+            
+            log_scraping_activity(f"Concurrent download completed. Successfully downloaded {len(saved_images)} images")
         
         # Clean up memory
         cleanup_memory()

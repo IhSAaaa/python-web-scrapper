@@ -69,76 +69,7 @@
               </div>
             </div>
 
-            <!-- Login Toggle -->
-            <div class="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-100">
-              <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="font-semibold text-gray-900">Authentication Required</h3>
-                  <p class="text-sm text-gray-600">Enable if the website requires login</p>
-                </div>
-              </div>
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  v-model="formData.login_enabled"
-                  type="checkbox"
-                  class="sr-only peer"
-                  :disabled="isLoading"
-                />
-                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-purple-500"></div>
-              </label>
-            </div>
 
-            <!-- Login Fields -->
-            <div v-if="formData.login_enabled" class="space-y-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border border-blue-100">
-              <div class="space-y-2">
-                <label for="login-url" class="block text-sm font-semibold text-gray-700">
-                  Login URL
-                </label>
-                <input
-                  id="login-url"
-                  v-model="formData.login_url"
-                  type="url"
-                  placeholder="https://example.com/login"
-                  class="input-field"
-                  :disabled="isLoading"
-                />
-              </div>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label for="username" class="block text-sm font-semibold text-gray-700">
-                    Username
-                  </label>
-                  <input
-                    id="username"
-                    v-model="formData.username"
-                    type="text"
-                    placeholder="Enter username"
-                    class="input-field"
-                    :disabled="isLoading"
-                  />
-                </div>
-                
-                <div class="space-y-2">
-                  <label for="password" class="block text-sm font-semibold text-gray-700">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    v-model="formData.password"
-                    type="password"
-                    placeholder="Enter password"
-                    class="input-field"
-                    :disabled="isLoading"
-                  />
-                </div>
-              </div>
-            </div>
 
             <!-- Submit Button -->
             <div class="flex justify-center pt-4">
@@ -363,11 +294,7 @@ export default {
     const error = ref(null)
 
     const formData = reactive({
-      url: '',
-      login_enabled: false,
-      login_url: '',
-      username: '',
-      password: ''
+      url: ''
     })
 
     const getFullUrl = (relativeUrl) => {

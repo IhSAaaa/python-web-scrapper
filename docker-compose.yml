@@ -8,6 +8,7 @@ services:
     volumes:
       - ./output:/app/output
       - ./backend/logs:/app/logs
+      - ./tests:/app/tests
     environment:
       - PYTHONPATH=/app
       - BACKEND_HOST=0.0.0.0
@@ -35,6 +36,31 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - scraper-network
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - ./tests:/app/tests
+      - ./output:/app/output
+    environment:
+      - PYTHONPATH=/app
+    command: >
+      sh -c "
+        echo 'Waiting for backend to be ready...' &&
+        while ! curl -f http://backend:8000/api/health > /dev/null 2>&1; do
+          echo 'Backend not ready, waiting...' &&
+          sleep 2
+        done &&
+        echo 'Backend is ready! Running tests...' &&
+        python -m pytest tests/ -v --tb=short
+      "
+    depends_on:
+      backend:
+        condition: service_healthy
     networks:
       - scraper-network
 

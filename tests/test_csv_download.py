@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BASE_URL = "http://localhost:8001"
+BASE_URL = "http://backend:8000"
 TEST_URL = "https://jeevawasa.com"
 
 def test_scraping_and_download():
@@ -22,7 +22,7 @@ def test_scraping_and_download():
         print("   1. Performing scraping...")
         payload = {
             "url": TEST_URL,
-            "login_enabled": False
+    
         }
         
         response = requests.post(f"{BASE_URL}/api/scrape", json=payload)
@@ -30,7 +30,7 @@ def test_scraping_and_download():
         if response.status_code != 200:
             print(f"❌ Scraping failed: {response.status_code}")
             print(f"   Response: {response.text}")
-            return False
+            assert False, f"Scraping failed with status {response.status_code}"
         
         data = response.json()
         print(f"✅ Scraping successful!")
@@ -80,7 +80,7 @@ def test_scraping_and_download():
                 print("❌ ERROR: CSV contains HTML instead of data!")
                 print("   First 200 characters:")
                 print(f"   {csv_content[:200]}")
-                return False
+                assert False, "CSV contains HTML instead of data"
             else:
                 print("✅ CSV content is valid (not HTML)")
                 print("   First 200 characters:")
@@ -92,15 +92,15 @@ def test_scraping_and_download():
                     f.write(csv_content)
                 print(f"   CSV saved to: {test_csv_path}")
                 
-                return True
+                assert True, "CSV download test passed"
         else:
             print(f"❌ CSV download failed: {csv_response.status_code}")
             print(f"   Response: {csv_response.text}")
-            return False
+            assert False, f"CSV download failed with status {csv_response.status_code}"
             
     except Exception as e:
         print(f"❌ Test error: {str(e)}")
-        return False
+        assert False, f"Test error: {str(e)}"
 
 def test_csv_endpoint():
     """Test the dedicated CSV endpoint"""
@@ -112,13 +112,13 @@ def test_csv_endpoint():
         
         if last_session_response.status_code != 200:
             print(f"❌ Failed to get last session: {last_session_response.status_code}")
-            return False
+            assert False, f"Failed to get last session with status {last_session_response.status_code}"
         
         last_session_data = last_session_response.json()
         
         if 'error' in last_session_data:
             print(f"⚠️  No sessions found: {last_session_data['error']}")
-            return False
+            assert False, f"No sessions found: {last_session_data['error']}"
         
         session_id = last_session_data['latest_session']
         print(f"   Using session: {session_id}")
@@ -133,17 +133,17 @@ def test_csv_endpoint():
             csv_content = csv_response.text
             if csv_content.startswith('<!DOCTYPE html>') or '<html' in csv_content:
                 print("❌ ERROR: CSV contains HTML instead of data!")
-                return False
+                assert False, "CSV contains HTML instead of data"
             else:
                 print("✅ CSV content is valid")
-                return True
+                assert True, "CSV endpoint test passed"
         else:
             print(f"❌ Dedicated CSV endpoint failed: {csv_response.status_code}")
-            return False
+            assert False, f"Dedicated CSV endpoint failed with status {csv_response.status_code}"
             
     except Exception as e:
         print(f"❌ Test error: {str(e)}")
-        return False
+        assert False, f"Test error: {str(e)}"
 
 def test_direct_file_access():
     """Test direct file access to check if files exist"""
@@ -155,13 +155,13 @@ def test_direct_file_access():
         
         if last_session_response.status_code != 200:
             print(f"❌ Failed to get last session: {last_session_response.status_code}")
-            return False
+            assert False, f"Failed to get last session with status {last_session_response.status_code}"
         
         last_session_data = last_session_response.json()
         
         if 'error' in last_session_data:
             print(f"⚠️  No sessions found: {last_session_data['error']}")
-            return False
+            assert False, f"No sessions found: {last_session_data['error']}"
         
         session_id = last_session_data['latest_session']
         session_path = last_session_data['session_path']
@@ -188,14 +188,14 @@ def test_direct_file_access():
                         else:
                             print(f"   ✅ {filename} has valid CSV content")
             
-            return True
+            assert True, "Direct file access test passed"
         else:
             print(f"❌ Session directory does not exist: {session_path}")
-            return False
+            assert False, f"Session directory does not exist: {session_path}"
             
     except Exception as e:
         print(f"❌ Test error: {str(e)}")
-        return False
+        assert False, f"Test error: {str(e)}"
 
 def main():
     """Run all CSV download tests"""

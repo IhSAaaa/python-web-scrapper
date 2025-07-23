@@ -7,6 +7,7 @@ services:
       - "8001:8000"
     volumes:
       - ./output:/app/output
+      - ./tests:/app/tests
     environment:
       - PYTHONPATH=/app
       - BACKEND_HOST=0.0.0.0
@@ -16,7 +17,7 @@ services:
     networks:
       - scraper-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -40,6 +41,31 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend.prod
+    volumes:
+      - ./tests:/app/tests
+      - ./output:/app/output
+    environment:
+      - PYTHONPATH=/app
+    command: >
+      sh -c "
+        echo 'Waiting for backend to be ready...' &&
+        while ! curl -f http://backend:8000/api/health > /dev/null 2>&1; do
+          echo 'Backend not ready, waiting...' &&
+          sleep 2
+        done &&
+        echo 'Backend is ready! Running tests...' &&
+        python -m pytest tests/ -v --tb=short
+      "
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - scraper-network
 
 networks:
   scraper-network:

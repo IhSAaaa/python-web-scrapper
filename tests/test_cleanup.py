@@ -12,7 +12,7 @@ import json
 from datetime import datetime, timedelta
 
 # Configuration
-BASE_URL = "http://localhost:8001"
+BASE_URL = "http://backend:8000"
 OUTPUT_DIR = "output"
 
 def create_test_session():

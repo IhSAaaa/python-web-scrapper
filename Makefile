@@ -73,6 +73,18 @@ docker-clean: ## Clean Docker images and containers
 	docker-compose down -v
 	docker system prune -f
 
+test: ## Run tests
+	@echo "🧪 Running tests..."
+	@./run_tests.sh
+
+test-docker: ## Run tests in Docker container
+	@echo "🧪 Running tests in Docker..."
+	docker-compose run --rm test
+
+test-local: ## Run tests locally
+	@echo "🧪 Running tests locally..."
+	python3 -m pytest tests/ -v --tb=short
+
 dev: ## Start development environment
 	@echo "🛠️ Starting development environment..."
 	@make install

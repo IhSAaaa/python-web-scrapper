@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 # Configuration
-BASE_URL = "http://localhost:8001"
+BASE_URL = "http://backend:8000"
 TEST_URL = "https://jeevawasa.com"
 
 def test_health_check():
@@ -24,13 +24,13 @@ def test_health_check():
             if 'system_info' in data:
                 print(f"   Memory Usage: {data['system_info'].get('memory_usage_percent', 'N/A')}%")
                 print(f"   Disk Usage: {data['system_info'].get('disk_usage_percent', 'N/A')}%")
-            return True
+            assert True, "Test passed"
         else:
             print(f"❌ Health Check failed: {response.status_code}")
-            return False
+            assert False, "Test failed"
     except Exception as e:
         print(f"❌ Health Check error: {str(e)}")
-        return False
+        assert False, "Test failed"
 
 def test_scraping():
     """Test the improved scraping functionality"""
@@ -38,7 +38,7 @@ def test_scraping():
     try:
         payload = {
             "url": TEST_URL,
-            "login_enabled": False
+    
         }
         
         print(f"   Scraping: {TEST_URL}")
@@ -54,14 +54,14 @@ def test_scraping():
             print(f"   Links: {data['links_count']}")
             print(f"   Images: {data['images_count']}")
             print(f"   Message: {data['message']}")
-            return True
+            assert True, "Test passed"
         else:
             print(f"❌ Scraping failed: {response.status_code}")
             print(f"   Response: {response.text}")
-            return False
+            assert False, "Test failed"
     except Exception as e:
         print(f"❌ Scraping error: {str(e)}")
-        return False
+        assert False, "Test failed"
 
 def test_maintenance_stats():
     """Test the maintenance statistics endpoint"""
@@ -74,13 +74,13 @@ def test_maintenance_stats():
             print(f"   Total Sessions: {data.get('total_sessions', 0)}")
             print(f"   Total Files: {data.get('total_files', 0)}")
             print(f"   Total Size: {data.get('total_size_mb', 0)} MB")
-            return True
+            assert True, "Test passed"
         else:
             print(f"❌ Maintenance Stats failed: {response.status_code}")
-            return False
+            assert False, "Test failed"
     except Exception as e:
         print(f"❌ Maintenance Stats error: {str(e)}")
-        return False
+        assert False, "Test failed"
 
 def test_debug_logs():
     """Test the debug logs endpoint"""
@@ -95,13 +95,13 @@ def test_debug_logs():
                 for filename, info in data['log_files'].items():
                     if isinstance(info, dict) and 'size' in info:
                         print(f"   - {filename}: {info['size']} bytes, {info.get('lines', 0)} lines")
-            return True
+            assert True, "Test passed"
         else:
             print(f"❌ Debug Logs failed: {response.status_code}")
-            return False
+            assert False, "Test failed"
     except Exception as e:
         print(f"❌ Debug Logs error: {str(e)}")
-        return False
+        assert False, "Test failed"
 
 def test_last_session():
     """Test the last session debug endpoint"""
@@ -116,16 +116,16 @@ def test_last_session():
                 print(f"   Files: {len(data.get('files', []))}")
                 if data.get('csv_file'):
                     print(f"   CSV File: {data['csv_file']}")
-                return True
+                assert True, "Test passed"
             else:
                 print(f"⚠️  Last Session: {data['error']}")
-                return True  # Not an error, just no sessions
+                assert True, "Test passed"  # Not an error, just no sessions
         else:
             print(f"❌ Last Session failed: {response.status_code}")
-            return False
+            assert False, "Test failed"
     except Exception as e:
         print(f"❌ Last Session error: {str(e)}")
-        return False
+        assert False, "Test failed"
 
 def test_improvements():
     """Run all improvement tests"""
@@ -143,8 +143,8 @@ def test_improvements():
     results = []
     for test_name, test_func in tests:
         try:
-            result = test_func()
-            results.append((test_name, result))
+            test_func()  # Function uses assert, so if it passes, we continue
+            results.append((test_name, True))
         except Exception as e:
             print(f"❌ {test_name} crashed: {str(e)}")
             results.append((test_name, False))
@@ -167,10 +167,10 @@ def test_improvements():
     
     if passed == total:
         print("🎉 All tests passed! Improvements are working correctly.")
+        assert True, "All improvement tests passed"
     else:
         print("⚠️  Some tests failed. Check the server logs for details.")
-    
-    return passed == total
+        assert False, f"Only {passed}/{total} tests passed"
 
 def check_improvements():
     """Check if improvements are properly implemented"""
