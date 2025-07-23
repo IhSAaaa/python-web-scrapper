@@ -1,0 +1,31 @@
+{
+  "name": "web-scraper-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "stop": "kill-port 3000 3001 5173 4173 && echo '✅ Vite development server stopped'",
+    "stop:force": "kill-port --force 3000 3001 5173 4173 && echo '✅ Vite development server force stopped'",
+    "stop:clean": "kill-port 3000 3001 5173 4173 && rm -rf node_modules/.vite dist && echo '✅ Vite stopped and cache cleaned'",
+    "status": "echo '🔍 Checking Vite processes...' && pgrep -f vite && echo '🔍 Checking ports...' && lsof -i:3000,3001,5173,4173 || echo '✅ No Vite processes found'",
+    "setup:env": "./setup-env.sh",
+    "setup": "npm run setup:env && echo '✅ Environment setup complete'"
+  },
+  "dependencies": {
+    "vue": "^3.3.8",
+    "vue-router": "^4.2.5",
+    "axios": "^1.6.2",
+    "@headlessui/vue": "^1.7.16",
+    "@heroicons/vue": "^2.0.18"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "vite": "^5.0.0",
+    "kill-port": "^2.0.1"
+  }
+} 

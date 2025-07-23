@@ -1,0 +1,49 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend.prod
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./output:/app/output
+    environment:
+      - PYTHONPATH=/app
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8001
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    networks:
+      - scraper-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend.prod
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - scraper-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  scraper-network:
+    driver: bridge
+
+volumes:
+  output: 
