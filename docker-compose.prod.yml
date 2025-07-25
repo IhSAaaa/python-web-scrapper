@@ -4,15 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile.backend.prod
     ports:
-      - "8001:8000"
+      - "18000:8000"
     volumes:
       - ./output:/app/output
       - ./tests:/app/tests
     environment:
       - PYTHONPATH=/app
       - BACKEND_HOST=0.0.0.0
-      - BACKEND_PORT=8001
+      - BACKEND_PORT=8000
       - LOG_LEVEL=INFO
+      - CORS_ORIGINS=*
     restart: unless-stopped
     networks:
       - scraper-network
@@ -28,7 +29,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend.prod
     ports:
-      - "80:80"
+      - "180:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -42,30 +43,31 @@ services:
       retries: 3
       start_period: 40s
 
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend.prod
-    volumes:
-      - ./tests:/app/tests
-      - ./output:/app/output
+  # Optional: Ngrok for public access (uncomment if needed)
+  ngrok:
+    image: ngrok/ngrok:latest
+    ports:
+      - "14040:4040"
     environment:
-      - PYTHONPATH=/app
-    command: >
-      sh -c "
-        echo 'Waiting for backend to be ready...' &&
-        while ! curl -f http://backend:8000/api/health > /dev/null 2>&1; do
-          echo 'Backend not ready, waiting...' &&
-          sleep 2
-        done &&
-        echo 'Backend is ready! Running tests...' &&
-        python -m pytest tests/ -v --tb=short
-      "
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: http frontend:80
     depends_on:
-      backend:
-        condition: service_healthy
+      - frontend
+    restart: unless-stopped
     networks:
       - scraper-network
+
+  # Optional: Cloudflare Tunnel for public access (uncomment if needed)
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+  #   restart: unless-stopped
+  #   networks:
+  #     - scraper-network
+  #   depends_on:
+  #     - frontend
 
 networks:
   scraper-network:

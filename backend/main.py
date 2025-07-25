@@ -84,9 +84,30 @@ CLEANUP_AFTER_DOWNLOAD = False  # Don't delete session folder after file downloa
 DEFAULT_CLEANUP_HOURS = 24  # Default hours for cleanup (24 hours = more user-friendly)
 AUTO_CLEANUP_INTERVAL = 3600  # Auto-cleanup interval in seconds (1 hour)
 
-# Create output directory
+# Create output directory with proper permission handling
 OUTPUT_DIR = "output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def ensure_output_directory():
+    """Ensure output directory exists with proper permissions"""
+    try:
+        if not os.path.exists(OUTPUT_DIR):
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
+            logger.info(f"Created output directory: {OUTPUT_DIR}")
+        
+        # Check if we can write to the directory
+        if not os.access(OUTPUT_DIR, os.W_OK):
+            logger.error(f"Permission denied: Cannot write to output directory: {OUTPUT_DIR}")
+            return False
+        
+        logger.info(f"Output directory ready: {OUTPUT_DIR}")
+        return True
+    except Exception as e:
+        logger.error(f"Error setting up output directory: {str(e)}")
+        return False
+
+# Initialize output directory
+if not ensure_output_directory():
+    logger.error("Failed to initialize output directory. Application may not work properly.")
 
 def cleanup_session_folder(session_id: str, reason: str = "manual"):
     """Clean up a specific session folder"""
@@ -175,7 +196,15 @@ app = FastAPI(title="Web Scraper API", version="1.0.0", lifespan=lifespan)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins in development
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:180",
+        "http://localhost:80",
+        "http://localhost",
+        "https://*.ngrok-free.app",
+        "https://*.ngrok.io",
+        "*"  # Allow all origins for development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -258,9 +287,36 @@ async def scrape_website(request: ScrapingRequest):
     log_scraping_activity(f"Starting scraping session | ID: {session_id} | URL: {request.url}")
     
     try:
+        # Ensure output directory exists and has proper permissions
+        if not os.path.exists(OUTPUT_DIR):
+            try:
+                os.makedirs(OUTPUT_DIR, exist_ok=True)
+                log_scraping_activity(f"Created output directory: {OUTPUT_DIR}")
+            except PermissionError as e:
+                log_error_with_context(e, f"Cannot create output directory: {OUTPUT_DIR}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Server configuration error: Cannot create output directory. Please contact administrator."
+                )
+        
+        # Check if we can write to output directory
+        if not os.access(OUTPUT_DIR, os.W_OK):
+            log_error_with_context("Permission denied", f"Cannot write to output directory: {OUTPUT_DIR}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Server configuration error: Cannot write to output directory. Please contact administrator."
+            )
+        
         session_output_dir = os.path.join(OUTPUT_DIR, session_id)
-        os.makedirs(session_output_dir, exist_ok=True)
-        log_scraping_activity(f"Created session directory: {session_output_dir}")
+        try:
+            os.makedirs(session_output_dir, exist_ok=True)
+            log_scraping_activity(f"Created session directory: {session_output_dir}")
+        except PermissionError as e:
+            log_error_with_context(e, f"Cannot create session directory: {session_output_dir}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Server configuration error: Cannot create session directory. Please contact administrator."
+            )
         
         # Validate URL
         if not request.url.startswith(('http://', 'https://')):
