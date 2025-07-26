@@ -12,7 +12,11 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with environment variables
+# Default to empty for production (endpoints include /api prefix)
+ARG VITE_API_BASE_URL=
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 RUN npm run build
 
 # Production stage

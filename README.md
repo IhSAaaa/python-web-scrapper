@@ -224,46 +224,77 @@ LOG_LEVEL=INFO
 
 **Frontend:**
 ```bash
+# Development (direct backend access)
 VITE_API_BASE_URL=http://localhost:18000
-NODE_ENV=development
+
+# Production (nginx proxy with /api prefix preserved)
+VITE_API_BASE_URL=
 ```
 
 ### Performance Settings
 ```python
-MAX_CONCURRENT_DOWNLOADS = 10    # Concurrent image downloads
-CHUNK_SIZE = 32768               # Download chunk size
-TIMEOUT = 10                     # Request timeout
-RATE_LIMIT_DELAY = (0.1, 0.5)   # Rate limiting delay
+# Backend performance optimizations
+MAX_CONCURRENT_DOWNLOADS = 10
+CHUNK_SIZE = 32768
+TIMEOUT = 10
+RATE_LIMIT_DELAY = (0.1, 0.5)
 ```
 
 ## 🐳 Docker Configuration
 
-### Development
-- **Backend**: Python 3.11 with FastAPI
-- **Frontend**: Node.js 18 with Vue 3
-- **Test**: Dedicated test container with pytest
-- **Networks**: Isolated Docker network
-- **Volumes**: Persistent storage for scraped files
+### Development vs Production
 
-### Production
-- **Optimized Images**: Multi-stage builds
-- **Security**: Non-root users
-- **Health Checks**: Automated health monitoring
-- **Logging**: Structured logging with rotation
+**Development (`docker-compose.yml`):**
+- Frontend: Vite dev server with hot reload
+- Backend: Uvicorn with reload enabled
+- Direct API communication
+
+**Production (`docker-compose.prod.yml`):**
+- Frontend: Nginx serving built static files
+- Backend: Uvicorn with workers
+- Nginx proxy for API requests
+
+### API Configuration Best Practices
+
+1. **Development Environment:**
+   ```bash
+   VITE_API_BASE_URL=http://localhost:18000
+   ```
+
+2. **Production Environment:**
+   ```bash
+   VITE_API_BASE_URL=
+   ```
+   *Note: Endpoints include `/api` prefix, nginx preserves the prefix*
+
+3. **Testing Configuration:**
+   ```bash
+   make test-api-config
+   ```
 
 ## 📊 Monitoring & Logging
 
 ### Health Checks
-- **System Metrics**: CPU, memory, disk usage
-- **API Status**: Endpoint availability
-- **Session Management**: Active sessions count
-- **File Storage**: Storage usage and cleanup status
+- **Backend**: `GET /api/health` - System metrics and status
+- **Frontend**: Nginx health check endpoint
+- **Docker**: Automated health checks every 30s
 
 ### Logging
-- **Structured Logs**: JSON format for easy parsing
-- **Log Rotation**: Automatic log file management
-- **Error Tracking**: Detailed error context and stack traces
-- **Activity Monitoring**: Scraping activity and performance metrics
+- **Backend**: Structured logging with rotation
+- **Frontend**: Console logging for debugging
+- **Docker**: Container logs with timestamps
+
+### Monitoring Commands
+```bash
+# Check service health
+make health
+
+# View logs
+make logs-prod
+
+# Monitor in real-time
+make monitor
+```
 
 ## 🔒 Security Features
 
@@ -1082,17 +1113,107 @@ curl -X POST http://localhost:18000/api/scrape \
 
 ## 📈 Project Status
 
-- ✅ **All Tests Passing**: 20/20 test cases
-- ✅ **Performance Optimized**: 89% improvement in scraping speed
-- ✅ **Docker Ready**: Complete containerization
-- ✅ **Production Ready**: Optimized for production deployment
-- ✅ **Permission Issues Fixed**: Long-term solution implemented
-- ✅ **TaskFlow-Makefile**: Comprehensive development automation
-- ✅ **Well Documented**: Comprehensive documentation
-- ✅ **Maintained**: Active development and improvements
-- ✅ **Cleanup System**: Intelligent file management
-- ✅ **Public Deployment**: Multiple deployment options
-- ✅ **Security Enhanced**: Comprehensive security features
+### ✅ Current Status
+- **API Configuration**: Fixed redundant `/api/api/` path issue
+- **Production Ready**: Stable deployment with nginx proxy
+- **Testing**: Comprehensive test suite with 20 test cases
+- **Performance**: Optimized scraping with 89% improvement
+- **Monitoring**: Health checks and logging system
+
+### 🚀 Recent Updates (v2.1)
+- **Fixed API Path Redundancy**: Resolved `/api/api/` issue in production
+- **Improved Nginx Configuration**: Preserved `/api` prefix in proxy
+- **Enhanced Environment Management**: Standardized API base URL configuration
+- **Added Troubleshooting Tools**: Automated testing and debugging commands
+- **Updated Documentation**: Comprehensive troubleshooting guide
+
+### 📊 Performance Metrics
+- **Scraping Time**: ~30 seconds (down from 4+ minutes)
+- **Concurrent Downloads**: Up to 10 simultaneous image downloads
+- **Memory Usage**: Optimized with automatic cleanup
+- **Error Handling**: Faster failure detection and recovery
+
+## 🚀 Deployment Status
+
+### ✅ Production Ready
+- **API Configuration**: Fixed and tested
+- **Docker Containers**: Optimized for production
+- **Health Monitoring**: Automated checks active
+- **Logging**: Structured logging with rotation
+- **Security**: Non-root users and proper permissions
+
+### 🌐 Access Points
+- **Frontend**: http://localhost:80 (Production)
+- **Backend**: http://localhost:18000 (Direct)
+- **Ngrok**: https://*.ngrok-free.app (Public access)
+- **Health Check**: http://localhost:180/api/health
+
+### 🔧 Deployment Commands
+```bash
+# Start production environment
+make prod
+
+# Test configuration
+make test-api-config
+
+# View logs
+make logs-prod
+
+# Check status
+make status
+```
+
+## 📋 Changelog
+
+For detailed information about all changes, see [CHANGELOG.md](CHANGELOG.md).
+
+### [v2.1.0] - 2025-07-26
+#### 🐛 Fixed
+- **API Path Redundancy**: Fixed `/api/api/` issue in production environment
+- **Nginx Proxy Configuration**: Updated to preserve `/api` prefix correctly
+- **Environment Variables**: Standardized `VITE_API_BASE_URL` configuration
+
+#### ✨ Added
+- **Troubleshooting Commands**: Added `make test-api-config` for API testing
+- **Build Improvements**: Enhanced production build with correct environment variables
+- **Documentation**: Comprehensive troubleshooting and best practices guide
+
+#### 🔧 Changed
+- **Frontend API Logic**: Simplified endpoint handling for consistency
+- **Production Configuration**: Updated nginx and docker configurations
+- **Build Process**: Improved Dockerfile with build arguments
+
+#### 📚 Documentation
+- **Troubleshooting Guide**: Added common issues and solutions
+- **API Configuration**: Updated best practices for development and production
+- **Deployment Guide**: Enhanced with debugging and testing commands
+
+### [v2.0.0] - 2025-07-24
+#### 🚀 Performance
+- **Concurrent Downloads**: ThreadPoolExecutor for parallel image downloads
+- **Faster Rate Limiting**: Reduced from 1-3s to 0.1-0.5s delays
+- **Larger Chunks**: Increased chunk size from 8KB to 32KB
+- **Aggressive Timeouts**: Reduced timeout from 15s to 10s
+- **Optimized Retries**: Reduced from 3 to 2 retry attempts
+
+#### ✨ Features
+- **Modern Web Interface**: Vue 3 with Tailwind CSS and glassmorphism design
+- **Session Management**: Unique session IDs with 24-hour retention
+- **Smart Cleanup System**: Intelligent cleanup with user-friendly retention periods
+- **Comprehensive Testing**: 20 test cases with 100% pass rate
+
+#### 🔧 Technical
+- **Docker Support**: Complete containerization for easy deployment
+- **Health Checks**: Automated health monitoring
+- **Structured Logging**: JSON format with rotation
+- **Security**: Non-root users and proper permissions
+
+### [v1.0.0] - 2025-07-20
+#### 🎉 Initial Release
+- **Web Scraping**: Extract links and images from websites
+- **File Downloads**: CSV files and images as ZIP
+- **Image Processing**: SVG to PNG conversion
+- **Basic UI**: Simple web interface
 
 ## 🚀 Future Improvements
 

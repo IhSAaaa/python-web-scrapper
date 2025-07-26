@@ -275,8 +275,8 @@ const getApiBaseUrl = () => {
     return 'http://localhost:8001'
   }
   
-  // Default fallback
-  return '/api'
+  // Default fallback - use relative path for production
+  return ''
 }
 
 const API_BASE_URL = getApiBaseUrl()
@@ -285,6 +285,12 @@ axios.defaults.baseURL = API_BASE_URL
 // Log API configuration for debugging
 console.log('API Base URL:', API_BASE_URL)
 console.log('Environment:', import.meta.env.MODE)
+console.log('Environment Variables:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  MODE: import.meta.env.MODE,
+  DEV: import.meta.env.DEV,
+  PROD: import.meta.env.PROD
+})
 
 export default {
   name: 'App',
@@ -342,7 +348,11 @@ export default {
       results.value = null
 
       try {
-        const response = await axios.post('/api/scrape', formData)
+        // Use consistent endpoint with /api prefix
+        const endpoint = '/api/scrape'
+        console.log(`Making request to: ${endpoint}`)
+        
+        const response = await axios.post(endpoint, formData)
         results.value = response.data
       } catch (err) {
         console.error('Scraping error:', err)

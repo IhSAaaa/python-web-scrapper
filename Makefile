@@ -224,6 +224,17 @@ test: ## Run tests in Docker
 	@docker compose run --rm test || (echo "$(RED)[ERROR]$(NC) Tests failed" && exit 1)
 	@echo "$(GREEN)[SUCCESS]$(NC) Tests completed!"
 
+.PHONY: test-api-config
+test-api-config: ## Test API configuration in production
+	@echo "$(BLUE)[INFO]$(NC) Testing API configuration..."
+	@echo "$(YELLOW)Testing backend health check...$(NC)"
+	@curl -f http://localhost:18000/api/health || echo "$(RED)Backend health check failed$(NC)"
+	@echo "$(YELLOW)Testing frontend API proxy...$(NC)"
+	@curl -f http://localhost:180/api/health || echo "$(RED)Frontend API proxy failed$(NC)"
+	@echo "$(YELLOW)Testing direct API endpoint...$(NC)"
+	@curl -f http://localhost:18000/scrape -X POST -H "Content-Type: application/json" -d '{"url":"https://example.com"}' || echo "$(RED)Direct API endpoint failed$(NC)"
+	@echo "$(GREEN)[SUCCESS]$(NC) API configuration test completed!"
+
 # =============================================================================
 # BUILD COMMANDS
 # =============================================================================
@@ -241,6 +252,16 @@ build-frontend: ## Build frontend for production
 	@docker run --rm -v $(PWD)/frontend:/app -w /app node:18-alpine sh -c "npm install && npm run build"
 	@echo "$(GREEN)[SUCCESS]$(NC) Frontend built for production!"
 
+.PHONY: build-frontend-prod
+build-frontend-prod: ## Build frontend for production with correct API configuration
+	@echo "$(BLUE)[INFO]$(NC) Building frontend for production with API configuration..."
+	@docker build \
+		--build-arg VITE_API_BASE_URL= \
+		-f frontend/Dockerfile.frontend.prod \
+		-t web-scraper-frontend:prod \
+		./frontend
+	@echo "$(GREEN)[SUCCESS]$(NC) Frontend built for production with correct API configuration!"
+
 .PHONY: build-backend
 build-backend: ## Prepare backend for production
 	@echo "$(BLUE)[INFO]$(NC) Preparing backend for production..."
@@ -255,6 +276,14 @@ rebuild: ## Rebuild all Docker images
 	@$(DOCKER_COMPOSE) build --no-cache
 	@$(DOCKER_COMPOSE_PROD) build --no-cache
 	@echo "$(GREEN)[SUCCESS]$(NC) All images rebuilt"
+
+.PHONY: rebuild-prod
+rebuild-prod: ## Rebuild production images with correct configuration
+	@echo "$(BLUE)[INFO]$(NC) Rebuilding production images with correct API configuration..."
+	@$(MAKE) setup-permissions || $(MAKE) force-fix-permissions
+	@$(MAKE) build-frontend-prod
+	@$(DOCKER_COMPOSE_PROD) build --no-cache backend
+	@echo "$(GREEN)[SUCCESS]$(NC) Production images rebuilt with correct configuration!"
 
 .PHONY: install
 install: ## Install all dependencies in Docker

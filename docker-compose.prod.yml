@@ -30,6 +30,8 @@ services:
       dockerfile: Dockerfile.frontend.prod
     ports:
       - "180:80"
+    environment:
+      - VITE_API_BASE_URL=
     depends_on:
       backend:
         condition: service_healthy
